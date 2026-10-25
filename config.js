@@ -1,0 +1,3 @@
+window.CLASS9_CONFIG = {
+  API_BASE_URL: "__CLASS9_API_BASE_URL__"
+};

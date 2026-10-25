@@ -1,0 +1,5 @@
+_site/
+backend/node_modules/
+backend/.wrangler/
+backend/.dev.vars
+.DS_Store

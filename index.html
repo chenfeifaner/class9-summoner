@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071416">
+  <meta name="description" content="会昌中学高二九班专用抽号器">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http://127.0.0.1:* http://localhost:*; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <title>会昌中学高二九班专用抽号器</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/favicon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="auth-locked">
+  <canvas id="starfield" aria-hidden="true"></canvas>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <div class="nebula nebula-one" aria-hidden="true"></div>
+  <div class="nebula nebula-two" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="auth-screen" id="authScreen">
+    <div class="auth-stars" aria-hidden="true"></div>
+    <header class="auth-top">
+      <div class="auth-brand">
+        <img src="assets/school-mark-display.png" alt="会昌中学校徽">
+        <div>
+          <strong>会昌中学</strong>
+          <span>高二九班 · 星契司命</span>
+        </div>
+      </div>
+      <span class="auth-version">ASTRA · CLASS 9</span>
+    </header>
+
+    <main class="auth-layout">
+      <section class="auth-intro" aria-labelledby="authIntroTitle">
+        <span class="auth-kicker">THE CONSTELLATION REMEMBERS</span>
+        <h1 id="authIntroTitle">以星为契<br><em>以名为引</em></h1>
+        <p>为每位同学建立独立星契。出生日期决定本命五行，抽取、头像与天命值均留在当前浏览器，下一次登录仍会沿星轨归来。</p>
+
+        <div class="auth-mystic-strip">
+          <div>
+            <span>今日月令</span>
+            <strong id="authMonthElement">待启</strong>
+          </div>
+          <div>
+            <span>当令时辰</span>
+            <strong id="authHourElement">待启</strong>
+          </div>
+          <div>
+            <span>天命积分</span>
+            <strong>蓝 +2 · 紫 +5 · 金 +10</strong>
+          </div>
+        </div>
+
+        <div class="auth-seal" aria-hidden="true">
+          <div class="seal-orbit"></div>
+          <img src="assets/school-mark-display.png" alt="">
+          <span>九</span>
+        </div>
+      </section>
+
+      <section class="auth-panel" aria-label="账户入口">
+        <div class="auth-panel-head">
+          <div>
+            <span class="modal-kicker">LOCAL STAR BOND</span>
+            <h2>星契账户</h2>
+          </div>
+          <span class="local-badge"><i aria-hidden="true"></i>本机保存</span>
+        </div>
+
+        <div class="auth-tabs" role="tablist" aria-label="账户操作">
+          <button class="auth-tab is-active" id="loginTab" type="button" role="tab" aria-selected="true" aria-controls="loginForm" data-auth-tab="login">登录</button>
+          <button class="auth-tab" id="registerTab" type="button" role="tab" aria-selected="false" aria-controls="registerForm" data-auth-tab="register">创建星契</button>
+        </div>
+
+        <form class="auth-form" id="loginForm" autocomplete="on">
+          <label class="field">
+            <span>选择本人姓名</span>
+            <select id="loginName" name="username" autocomplete="username" required>
+              <option value="">正在载入班级名单</option>
+            </select>
+            <small>登录账户必须来自高二九班 56 人名单</small>
+          </label>
+          <label class="field">
+            <span>星契密码</span>
+            <input id="loginPassword" name="password" type="password" minlength="4" maxlength="64" autocomplete="current-password" required>
+            <button class="field-icon" type="button" data-password-toggle="loginPassword" aria-label="显示密码">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </label>
+          <p class="form-error" id="loginError" role="alert"></p>
+          <button class="primary-button" type="submit">登录星契</button>
+          <p class="auth-switch">还没有账户？<button type="button" data-auth-switch="register">创建自己的星契</button></p>
+        </form>
+
+        <form class="auth-form" id="registerForm" autocomplete="off" hidden>
+          <div class="avatar-field">
+            <button class="avatar-picker" id="registerAvatarButton" type="button" aria-label="选择头像">
+              <span class="avatar-preview" id="registerAvatarPreview">九</span>
+              <span class="avatar-edit-mark">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+              </span>
+            </button>
+            <div>
+              <strong>设置个人头像</strong>
+              <span>可选，支持 JPG、PNG、WebP</span>
+            </div>
+            <input id="registerAvatarInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+          </div>
+
+          <label class="field">
+            <span>选择本人姓名</span>
+            <select id="registerName" name="username" autocomplete="username" required>
+              <option value="">正在载入班级名单</option>
+            </select>
+            <small>账户名固定为班级名单姓名，一名同学只能创建一个账户</small>
+          </label>
+          <label class="field">
+            <span>星契生日</span>
+            <input id="registerBirthday" name="birthday" type="date" min="1900-01-01" required>
+            <small>按出生日期排定本命五行与个人星轨</small>
+          </label>
+          <label class="field">
+            <span>星契密码</span>
+            <input id="registerPassword" name="password" type="password" minlength="8" maxlength="64" autocomplete="new-password" required>
+            <button class="field-icon" type="button" data-password-toggle="registerPassword" aria-label="显示密码">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+            <small>至少 8 位字符，密码不会以明文保存</small>
+          </label>
+          <label class="field">
+            <span>确认密码</span>
+            <input id="registerPasswordConfirm" name="passwordConfirm" type="password" minlength="8" maxlength="64" autocomplete="new-password" required>
+          </label>
+          <p class="form-error" id="registerError" role="alert"></p>
+          <button class="primary-button" type="submit">点亮我的星契</button>
+          <p class="auth-switch">已有账户？<button type="button" data-auth-switch="login">返回登录</button></p>
+        </form>
+
+        <button class="guest-button" id="guestButton" type="button">
+          <span class="guest-sigil" aria-hidden="true">✦</span>
+          <span class="guest-copy">
+            <strong>不登录，直接班级抽号</strong>
+            <small>抽中姓名仍会给本人累计天命</small>
+          </span>
+          <span class="guest-arrow" aria-hidden="true">→</span>
+        </button>
+
+        <p class="auth-local-note" id="authStorageNote">账户仅保存在当前浏览器，不会上传到网络。清除浏览器数据会同时清除账户、生日、头像和天命值。姓名以班级 56 人名单为准。</p>
+      </section>
+    </main>
+
+    <footer class="auth-footer">
+      <span>会昌中学 · 高二九班</span>
+      <span>星光不问赶路人</span>
+    </footer>
+  </div>
+
+  <div class="app" id="app" aria-hidden="true">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <img src="assets/school-mark-display.png" alt="">
+        </div>
+        <div class="brand-copy">
+          <span class="brand-kicker">HUICHANG MIDDLE SCHOOL · CLASS 9</span>
+          <h1>会昌中学高二九班专用抽号器</h1>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="account-chip" id="profileButton" type="button" aria-label="打开个人星契">
+          <span class="avatar small" id="topAvatar">九</span>
+          <span class="account-chip-copy">
+            <strong id="topAccountName">星契账户</strong>
+            <small><span id="topScore">0</span> 天命值</small>
+          </span>
+          <span class="account-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="term-badge">
+          <span class="term-dot" aria-hidden="true"></span>
+          <span>星轨在线</span>
+        </div>
+        <button class="icon-button" id="soundButton" type="button" aria-label="关闭音效" data-tooltip="关闭音效">
+          <svg class="icon icon-volume" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M11 5 6 9H2v6h4l5 4V5Z"></path>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+          <svg class="icon icon-muted" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M11 5 6 9H2v6h4l5 4V5Z"></path>
+            <path d="m22 9-6 6"></path>
+            <path d="m16 9 6 6"></path>
+          </svg>
+        </button>
+        <button class="icon-button" id="rosterButton" type="button" aria-label="查看全班星图" data-tooltip="全班星图">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <circle cx="5" cy="6" r="1.5"></circle>
+            <circle cx="19" cy="7" r="1.5"></circle>
+            <circle cx="18" cy="18" r="1.5"></circle>
+            <circle cx="6" cy="18" r="1.5"></circle>
+            <path d="m6.4 7.1 3.3 2.7M14.5 10.5l3.3-2.2M14.5 13.7l2.3 2.8M9.4 14.6l-2.3 2.2"></path>
+          </svg>
+        </button>
+        <button class="icon-button" id="resetButton" type="button" aria-label="重置我的抽号" data-tooltip="重置本轮">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="summon-stage rarity-blue" id="summonStage" aria-label="抽号舞台">
+        <div class="stage-grid" aria-hidden="true"></div>
+        <div class="aurora aurora-one" aria-hidden="true"></div>
+        <div class="aurora aurora-two" aria-hidden="true"></div>
+        <canvas class="stage-constellation" id="stageConstellation" aria-hidden="true"></canvas>
+        <div class="corner corner-tl" aria-hidden="true"></div>
+        <div class="corner corner-tr" aria-hidden="true"></div>
+        <div class="corner corner-bl" aria-hidden="true"></div>
+        <div class="corner corner-br" aria-hidden="true"></div>
+
+        <div class="stage-header">
+          <div class="stage-status">
+            <span class="status-pulse" aria-hidden="true"></span>
+            <span id="statusLabel">星轨已连接</span>
+          </div>
+          <div class="rates" aria-label="今日动态抽取概率">
+            <span class="rate rate-blue"><i aria-hidden="true"></i>蓝 <b id="rateBlue">88.0%</b></span>
+            <span class="rate rate-purple"><i aria-hidden="true"></i>紫 <b id="ratePurple">10.0%</b></span>
+            <span class="rate rate-gold"><i aria-hidden="true"></i>金 <b id="rateGold">2.0%</b></span>
+          </div>
+        </div>
+
+        <div class="stage-core">
+          <div class="summon-visual" aria-hidden="true">
+            <div class="celestial-gate gate-one"></div>
+            <div class="celestial-gate gate-two"></div>
+            <div class="horizon"></div>
+            <div class="orbit orbit-outer">
+              <span class="orbit-node node-a"></span>
+              <span class="orbit-node node-b"></span>
+              <span class="orbit-node node-c"></span>
+            </div>
+            <div class="orbit orbit-mid"></div>
+            <div class="orbit orbit-inner"></div>
+            <span class="rune rune-a">天</span>
+            <span class="rune rune-b">星</span>
+            <span class="rune rune-c">命</span>
+            <span class="rune rune-d">运</span>
+
+            <div class="emblem-shell" id="emblemShell">
+              <div class="emblem-aura"></div>
+              <div class="charge-ring"></div>
+              <img class="emblem" src="assets/summon-emblem.svg" alt="">
+              <div class="starfall" id="starfall"></div>
+              <div class="result-flare" id="resultFlare"></div>
+            </div>
+          </div>
+
+          <div class="summon-copy" id="summonCopy" aria-live="polite">
+            <span class="summon-kicker" id="resultKicker">STELLAR SUMMON</span>
+            <div class="name-line">
+              <h2 id="displayName">星轨静候</h2>
+              <span class="rarity-tag" id="rarityTag">蓝星</span>
+            </div>
+            <div class="star-rating" id="starRating" aria-label="三星">
+              <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+            </div>
+            <p class="natal-note" id="natalNote">生日星盘待启</p>
+            <p id="displayHint">点击下方按钮，让今日星象替你点名</p>
+            <div class="score-gain" id="scoreGain">+2 天命值</div>
+          </div>
+        </div>
+
+        <div class="stage-actions">
+          <p class="key-hint"><kbd>Space</kbd><span>快捷抽取</span></p>
+          <button class="summon-button" id="drawButton" type="button">
+            <span class="button-orbit" aria-hidden="true"></span>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m12 3 2.34 6.16L21 11.5l-6.66 2.34L12 20l-2.34-6.16L3 11.5l6.66-2.34L12 3Z"></path>
+            </svg>
+            <span id="drawButtonLabel">开始抽号</span>
+          </button>
+          <p class="round-note"><span id="pendingLabel">本轮待抽取 56 人</span><span class="no-repeat">全班星轨不重复</span></p>
+        </div>
+
+        <div class="stage-footer" aria-hidden="true">
+          <span>N 25°33′ · E 115°47′</span>
+          <span class="footer-center">ASTRA · 09 · LOCAL BOND</span>
+          <span id="drawSerial">SEQUENCE 000</span>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <section class="pool-summary">
+          <div class="section-heading">
+            <span>全班本轮星轨</span>
+            <span class="section-state" id="roundState">进行中</span>
+          </div>
+          <div class="pool-number">
+            <strong id="remainingCount">56</strong>
+            <span>人尚未被点亮</span>
+          </div>
+          <div class="progress" role="progressbar" aria-label="抽号进度" aria-valuemin="0" aria-valuemax="56" aria-valuenow="0" id="progressBar">
+            <span id="progressFill"></span>
+          </div>
+          <div class="pool-stats">
+            <div>
+              <span>已抽取</span>
+              <strong id="drawnCount">0</strong>
+            </div>
+            <div>
+              <span id="scoreStatLabel">我的天命</span>
+              <strong id="scoreCount">0</strong>
+            </div>
+            <div>
+              <span id="goldStatLabel">我的金星</span>
+              <strong id="goldCount">0</strong>
+            </div>
+          </div>
+        </section>
+
+        <nav class="panel-tabs" aria-label="星轨信息">
+          <button class="panel-tab is-active" type="button" data-panel="history">抽取记录</button>
+          <button class="panel-tab" type="button" data-panel="leaderboard">天命榜</button>
+          <button class="panel-tab" type="button" data-panel="mystic">今日玄机</button>
+        </nav>
+
+        <section class="panel-view history-section" id="historyView" data-panel-view="history">
+          <div class="section-heading history-heading">
+            <span>班级星痕</span>
+            <span id="historyCount">等待第一颗星</span>
+          </div>
+          <ol class="history-list" id="historyList"></ol>
+          <div class="history-empty" id="historyEmpty">
+            <div class="empty-orbit" aria-hidden="true"><span></span></div>
+            <p>星轨尚无记录</p>
+            <span>每次抽号都会在这里留下星痕</span>
+          </div>
+        </section>
+
+        <section class="panel-view leaderboard-section" id="leaderboardView" data-panel-view="leaderboard" hidden>
+          <div class="section-heading leaderboard-heading">
+            <span>天命值排行</span>
+            <span id="leaderboardCount">0 份星契</span>
+          </div>
+          <ol class="leaderboard-list" id="leaderboardList"></ol>
+          <div class="leaderboard-empty" id="leaderboardEmpty">
+            <span class="leaderboard-sigil" aria-hidden="true">榜</span>
+            <p>等待第一位天命者</p>
+          </div>
+        </section>
+
+        <section class="panel-view mystic-section" id="mysticView" data-panel-view="mystic" hidden>
+          <div class="section-heading">
+            <span>今日玄机</span>
+            <span id="mysticDate">载入中</span>
+          </div>
+          <div class="fortune-orbit">
+            <div class="fortune-number">
+              <strong id="fortuneIndex">--</strong>
+              <span>气运指数</span>
+            </div>
+            <div class="fortune-caption">
+              <span>本命五行</span>
+              <strong id="destinyElement">--</strong>
+              <small id="destinyRelation">等待排盘</small>
+            </div>
+          </div>
+          <div class="mystic-grid">
+            <div>
+              <span>月令</span>
+              <strong id="monthElement">--</strong>
+            </div>
+            <div>
+              <span>时辰</span>
+              <strong id="hourElement">--</strong>
+            </div>
+            <div>
+              <span>吉方</span>
+              <strong id="luckyDirection">--</strong>
+            </div>
+            <div>
+              <span>吉时</span>
+              <strong id="luckyHour">--</strong>
+            </div>
+          </div>
+          <p class="mystic-advice" id="mysticAdvice">今日星象正在排布。</p>
+          <p class="mystic-formula">星契由生日纳音定本命五行，概率再由「当前月令 × 当令时辰 × 本命五行」动态微调。</p>
+        </section>
+
+        <section class="odds-panel" aria-label="今日概率">
+          <div class="odds-heading">
+            <span>今日星轨概率</span>
+            <small id="oddsShift">正在推演</small>
+          </div>
+          <div class="odds-bars">
+            <div><span class="odds-label blue">蓝</span><i><b id="oddsBlue" style="width:88%"></b></i><em id="oddsBlueText">88.0%</em></div>
+            <div><span class="odds-label purple">紫</span><i><b id="oddsPurple" style="width:10%"></b></i><em id="oddsPurpleText">10.0%</em></div>
+            <div><span class="odds-label gold">金</span><i><b id="oddsGold" style="width:2%"></b></i><em id="oddsGoldText">2.0%</em></div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <dialog class="modal roster-modal" id="rosterDialog" aria-labelledby="rosterTitle">
+    <div class="modal-head">
+      <div>
+        <span class="modal-kicker">CLASS CONSTELLATION</span>
+        <h2 id="rosterTitle">高二九班星图</h2>
+      </div>
+      <button class="icon-button modal-close" type="button" data-close-dialog="rosterDialog" aria-label="关闭星图" data-tooltip="关闭">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+      </button>
+    </div>
+    <div class="roster-meta">
+      <div class="roster-view-tabs" role="tablist" aria-label="星图视图">
+        <button class="is-active" type="button" role="tab" aria-selected="true" data-roster-view="map">星图</button>
+        <button type="button" role="tab" aria-selected="false" data-roster-view="list">名录</button>
+      </div>
+      <span><b id="rosterDrawnCount">0</b> / 56 人已点亮</span>
+      <span class="roster-key"><i class="key-dot pending"></i>待抽取<i class="key-dot lit"></i>已抽取</span>
+    </div>
+    <div class="constellation-map" id="constellationMap">
+      <div class="map-nebula map-nebula-a" aria-hidden="true"></div>
+      <div class="map-nebula map-nebula-b" aria-hidden="true"></div>
+      <div class="map-core" aria-hidden="true"><span>九</span></div>
+      <svg class="constellation-lines" id="constellationLines" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="constellation-stars" id="constellationStars"></div>
+      <p class="map-caption">悬停星点可查看姓名，已点亮的星会留下对应星色。</p>
+    </div>
+    <ul class="roster-grid" id="rosterGrid" hidden></ul>
+  </dialog>
+
+  <dialog class="modal profile-modal" id="profileDialog" aria-labelledby="profileTitle">
+    <div class="modal-head">
+      <div>
+        <span class="modal-kicker">PERSONAL STAR BOND</span>
+        <h2 id="profileTitle">个人星契</h2>
+      </div>
+      <button class="icon-button modal-close" type="button" data-close-dialog="profileDialog" aria-label="关闭个人星契" data-tooltip="关闭">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+      </button>
+    </div>
+    <div class="profile-hero">
+      <button class="profile-avatar-wrap" id="profileAvatarButton" type="button" aria-label="更换头像">
+        <span class="avatar profile-avatar" id="profileAvatar">九</span>
+        <span class="profile-avatar-edit" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+        </span>
+      </button>
+      <div class="profile-identity">
+        <span class="profile-destiny" id="profileDestiny">本命五行</span>
+        <h3 id="profileName">星契账户</h3>
+        <p id="profileJoined">星契建立于今日</p>
+      </div>
+      <div class="profile-score">
+        <strong id="profileScore">0</strong>
+        <span>天命值</span>
+      </div>
+      <input id="profileAvatarInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+    </div>
+    <div class="profile-stats">
+      <div><span>被抽中</span><strong id="profileDraws">0</strong></div>
+      <div><span>紫星</span><strong id="profilePurple">0</strong></div>
+      <div><span>金星</span><strong id="profileGold">0</strong></div>
+      <div><span>当前排名</span><strong id="profileRank">--</strong></div>
+    </div>
+    <div class="profile-birthday">
+      <label class="birthday-field">
+        <span>星契生日</span>
+        <input id="profileBirthdayInput" type="date" min="1900-01-01" required>
+      </label>
+      <button class="text-button" id="saveBirthdayButton" type="button">更新星契</button>
+    </div>
+    <div class="profile-actions">
+      <button class="text-button" id="changeAvatarButton" type="button">更换头像</button>
+      <button class="text-button danger-text" id="logoutButton" type="button">退出当前账户</button>
+    </div>
+    <p class="profile-note" id="profileStorageNote">账户、生日与头像仅保存在当前浏览器，生日会用于本命五行与天命概率计算。</p>
+  </dialog>
+
+  <dialog class="modal confirm-modal" id="resetDialog" aria-labelledby="resetTitle">
+    <div class="confirm-mark" aria-hidden="true">✦</div>
+    <span class="modal-kicker">RESET THE ORBIT</span>
+    <h2 id="resetTitle">重置本轮全班星轨？</h2>
+    <p>本轮 56 人的抽取记录会清空，重新开始一轮；已经累计的天命值会保留。</p>
+    <div class="confirm-actions">
+      <button class="text-button" type="button" data-close-dialog="resetDialog">暂不重置</button>
+      <button class="danger-button" id="confirmResetButton" type="button">确认重置</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <p class="sr-only" id="screenReaderStatus" aria-live="assertive"></p>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

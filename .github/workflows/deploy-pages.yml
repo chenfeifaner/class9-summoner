@@ -1,0 +1,50 @@
+name: Deploy frontend to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build static site
+        env:
+          WORKER_URL: ${{ vars.CLASS9_API_BASE_URL }}
+        run: |
+          if [ -z "$WORKER_URL" ]; then
+            echo "Repository variable CLASS9_API_BASE_URL is required."
+            exit 1
+          fi
+          mkdir -p _site
+          cp index.html styles.css app.js config.js _site/
+          cp -R assets _site/
+          sed -i "s|__CLASS9_API_BASE_URL__|${WORKER_URL}|g" _site/config.js
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
