@@ -188,6 +188,7 @@ let activePanel = "history";
 let activeRosterView = "map";
 let currentProbability = null;
 let toastTimer = null;
+let keepaliveTimer = null;
 
 function safeGet(key) {
   try {
@@ -311,6 +312,42 @@ async function refreshCloudState() {
   const state = await apiRequest("/api/state");
   applyCloudState(state);
   return state;
+}
+
+function startCloudKeepalive() {
+  if (!CLOUD_MODE || keepaliveTimer) {
+    return;
+  }
+  const refresh = async () => {
+    if (
+      isDrawing ||
+      document.visibilityState === "hidden" ||
+      elements.body.classList.contains("auth-locked") ||
+      document.querySelector("dialog[open]")
+    ) {
+      return;
+    }
+    const hadAccount = Boolean(currentAccount);
+    try {
+      const state = await refreshCloudState();
+      if (hadAccount && !state.currentUser) {
+        setAuthToken("");
+        showAuthScreen("登录状态已过期，请重新登录");
+        return;
+      }
+      renderAll();
+    } catch {
+      // The next heartbeat will retry automatically.
+    }
+  };
+
+  keepaliveTimer = window.setInterval(refresh, 4 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      refresh();
+    }
+  });
+  refresh();
 }
 
 function renderStorageMode() {
@@ -2545,6 +2582,7 @@ async function initialize() {
     setRosterView("map");
     setupStarfield();
     setupStageConstellation();
+    startCloudKeepalive();
     return;
   }
 

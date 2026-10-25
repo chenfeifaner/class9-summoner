@@ -121,3 +121,5 @@ window.CLASS9_CONFIG = {
 - 密码长度至少 8 位。
 - 建议在 Cloudflare 控制台再开启 WAF 速率限制作为第二层保护。
 - 当前会话令牌有效期默认 7 天，可在 `wrangler.toml` 中调整 `SESSION_TTL_HOURS`。
+- 页面在前台时每 4 分钟同步一次云端状态，并自动续期已登录会话。
+- GitHub Actions 每 6 小时请求一次健康接口和班级状态，用于保活与可用性检查。

@@ -384,6 +384,13 @@ async function getSessionAccount(request, env) {
     await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(tokenHash).run();
     return null;
   }
+  const ttlHours = Math.max(1, Math.min(720, Number(env.SESSION_TTL_HOURS) || 168));
+  const ttlMs = ttlHours * 60 * 60 * 1000;
+  if (Number(row.expires_at) - Date.now() < ttlMs / 2) {
+    await env.DB.prepare("UPDATE sessions SET expires_at = ? WHERE token_hash = ?")
+      .bind(Date.now() + ttlMs, tokenHash)
+      .run();
+  }
   return row;
 }
 
