@@ -5,7 +5,7 @@
 - 前端：GitHub Pages
 - 后端：Cloudflare Workers
 - 账户与天命账本：Cloudflare D1
-- 头像：Cloudflare R2
+- 头像：Cloudflare D1（256px 压缩存储）
 
 数据库中的密码只保存 PBKDF2-SHA256 加盐摘要。抽号、星级计算、天命加分和本轮状态全部在 Worker 中执行，网页无法直接改写排行榜。
 
@@ -14,7 +14,6 @@
 在 Cloudflare 控制台创建：
 
 1. D1 数据库：`class9-summoner`
-2. R2 存储桶：`class9-summoner-avatars`
 
 把 D1 数据库 ID 填入 [`backend/wrangler.toml`](backend/wrangler.toml)：
 
@@ -71,7 +70,11 @@ https://class9-summoner-api.你的子域.workers.dev/api/health
    - `CLOUDFLARE_API_TOKEN`
    - `CLOUDFLARE_ACCOUNT_ID`
 
-Cloudflare API Token 至少需要 Worker Scripts、D1 和 R2 的部署权限。不要把 Token 写进仓库或 `config.js`。
+5. 在 `Settings > Secrets and variables > Actions > Variables` 新增：
+   - `ENABLE_GITHUB_PAGES=true`
+   - `ENABLE_CLOUDFLARE_CI=true`
+
+Cloudflare API Token 至少需要 Worker Scripts 和 D1 的部署权限。不要把 Token 写进仓库或 `config.js`。
 
 工作流：
 

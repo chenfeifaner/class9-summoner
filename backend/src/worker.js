@@ -311,11 +311,10 @@ function parseAvatarDataUrl(value) {
   if (byteString.length > MAX_AVATAR_BYTES) {
     throw new ApiError(413, "AVATAR_TOO_LARGE", "头像不能超过 512 KB");
   }
-  const bytes = new Uint8Array(byteString.length);
-  for (let index = 0; index < byteString.length; index += 1) {
-    bytes[index] = byteString.charCodeAt(index);
-  }
-  return { contentType: match[1], bytes };
+  return {
+    contentType: match[1],
+    base64: match[2].replace(/\s/g, "")
+  };
 }
 
 async function enforceRateLimit(request, env, scope, limit, windowMs) {
@@ -370,7 +369,7 @@ async function getSessionAccount(request, env) {
       a.birthday,
       a.nayin,
       a.destiny,
-      a.avatar_key,
+      CASE WHEN a.avatar_data IS NOT NULL THEN 1 ELSE 0 END AS has_avatar,
       a.avatar_updated_at,
       a.created_at
     FROM sessions s
@@ -393,7 +392,7 @@ function publicAccount(row, origin) {
   return {
     id: row.id,
     name: row.student_name,
-    avatarUrl: row.avatar_key ? `${origin}/api/avatar/${encodeURIComponent(row.id)}${avatarVersion}` : null,
+    avatarUrl: row.has_avatar ? `${origin}/api/avatar/${encodeURIComponent(row.id)}${avatarVersion}` : null,
     createdAt: Number(row.created_at)
   };
 }
@@ -426,7 +425,7 @@ async function loadState(env, request, currentAccount) {
   const [studentsResult, accountsResult, drawsResult, awardsResult, leaderboardResult] = await env.DB.batch([
     env.DB.prepare("SELECT name, sort_order FROM students ORDER BY sort_order"),
     env.DB.prepare(
-      "SELECT id, student_name, avatar_key, avatar_updated_at, created_at FROM accounts ORDER BY created_at"
+      "SELECT id, student_name, CASE WHEN avatar_data IS NOT NULL THEN 1 ELSE 0 END AS has_avatar, avatar_updated_at, created_at FROM accounts ORDER BY created_at"
     ),
     env.DB.prepare(
       "SELECT target_name, rarity, stars, points, at, drawn_by_account_id, drawn_by_name FROM draws WHERE round_version = ? ORDER BY at DESC"
@@ -500,22 +499,13 @@ async function handleRegister(request, env, cors) {
   const accountId = crypto.randomUUID();
   const birthdayParts = parseBirthday(body.birthday);
   const nayin = getNayin(birthdayParts.year);
-  const avatarKey = avatar ? `avatars/${accountId}` : null;
-
-  if (avatar) {
-    await env.R2.put(avatarKey, avatar.bytes, {
-      httpMetadata: {
-        contentType: avatar.contentType,
-        cacheControl: "public, max-age=3600"
-      }
-    });
-  }
+  const avatarData = avatar ? avatar.base64 : null;
 
   try {
     await env.DB.prepare(`
       INSERT INTO accounts (
         id, student_name, password_hash, password_salt, birthday,
-        nayin, destiny, avatar_key, avatar_type, avatar_updated_at, created_at
+        nayin, destiny, avatar_data, avatar_type, avatar_updated_at, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       accountId,
@@ -525,20 +515,17 @@ async function handleRegister(request, env, cors) {
       body.birthday,
       nayin.name,
       nayin.element,
-      avatarKey,
+      avatarData,
       avatar ? avatar.contentType : null,
       avatar ? Date.now() : null,
       Date.now()
     ).run();
   } catch (error) {
-    if (avatarKey) {
-      await env.R2.delete(avatarKey).catch(() => {});
-    }
     throw new ApiError(409, "ACCOUNT_EXISTS", "该同学已经创建账户");
   }
 
   const account = await env.DB.prepare(
-    "SELECT id, student_name, birthday, nayin, destiny, avatar_key, avatar_updated_at, created_at FROM accounts WHERE id = ?"
+    "SELECT id, student_name, birthday, nayin, destiny, CASE WHEN avatar_data IS NOT NULL THEN 1 ELSE 0 END AS has_avatar, avatar_updated_at, created_at FROM accounts WHERE id = ?"
   ).bind(accountId).first();
   const token = await issueSession(env, accountId);
   return json({
@@ -554,7 +541,7 @@ async function handleLogin(request, env, cors) {
   const password = String(body.password || "");
   const account = await env.DB.prepare(`
     SELECT id, student_name, password_hash, password_salt, birthday, nayin, destiny,
-      avatar_key, avatar_updated_at, created_at
+      CASE WHEN avatar_data IS NOT NULL THEN 1 ELSE 0 END AS has_avatar, avatar_updated_at, created_at
     FROM accounts WHERE student_name = ?
   `).bind(name).first();
   if (!account) {
@@ -605,15 +592,8 @@ async function handleUpdateMe(request, env, cors, account) {
     if (!avatar) {
       throw new ApiError(400, "INVALID_AVATAR", "头像内容为空");
     }
-    const avatarKey = `avatars/${account.id}`;
-    await env.R2.put(avatarKey, avatar.bytes, {
-      httpMetadata: {
-        contentType: avatar.contentType,
-        cacheControl: "public, max-age=3600"
-      }
-    });
-    updates.push("avatar_key = ?", "avatar_type = ?", "avatar_updated_at = ?");
-    bindings.push(avatarKey, avatar.contentType, Date.now());
+    updates.push("avatar_data = ?", "avatar_type = ?", "avatar_updated_at = ?");
+    bindings.push(avatar.base64, avatar.contentType, Date.now());
   }
 
   if (updates.length === 0) {
@@ -623,7 +603,9 @@ async function handleUpdateMe(request, env, cors, account) {
   bindings.push(account.id);
   await env.DB.prepare(`UPDATE accounts SET ${updates.join(", ")} WHERE id = ?`).bind(...bindings).run();
   const updated = await env.DB.prepare(`
-    SELECT id, student_name, birthday, nayin, destiny, avatar_key, avatar_updated_at, created_at
+    SELECT id, student_name, birthday, nayin, destiny,
+      CASE WHEN avatar_data IS NOT NULL THEN 1 ELSE 0 END AS has_avatar,
+      avatar_updated_at, created_at
     FROM accounts WHERE id = ?
   `).bind(account.id).first();
   return json({ user: privateAccount(updated, new URL(request.url).origin) }, 200, cors);
@@ -736,20 +718,21 @@ async function handleAvatar(request, env, cors) {
   }
   const accountId = decodeURIComponent(match[1]);
   const account = await env.DB.prepare(
-    "SELECT avatar_key, avatar_type FROM accounts WHERE id = ?"
+    "SELECT avatar_data, avatar_type FROM accounts WHERE id = ?"
   ).bind(accountId).first();
-  if (!account || !account.avatar_key) {
+  if (!account || !account.avatar_data) {
     throw new ApiError(404, "NOT_FOUND", "头像不存在");
   }
-  const object = await env.R2.get(account.avatar_key);
-  if (!object) {
-    throw new ApiError(404, "NOT_FOUND", "头像不存在");
+  const binary = atob(account.avatar_data);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
   }
-  return new Response(object.body, {
+  return new Response(bytes, {
     status: 200,
     headers: {
       ...cors,
-      "content-type": object.httpMetadata?.contentType || account.avatar_type || "image/jpeg",
+      "content-type": account.avatar_type || "image/jpeg",
       "cache-control": "public, max-age=3600",
       "x-content-type-options": "nosniff"
     }

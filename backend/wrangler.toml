@@ -4,17 +4,13 @@ compatibility_date = "2026-10-25"
 workers_dev = true
 
 [vars]
-ALLOWED_ORIGINS = "https://YOUR_GITHUB_USERNAME.github.io,http://localhost:8080,http://127.0.0.1:8080"
+ALLOWED_ORIGINS = "https://chenfeifaner.github.io,http://localhost:8080,http://127.0.0.1:8080"
 SESSION_TTL_HOURS = "168"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "class9-summoner"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
-
-[[r2_buckets]]
-binding = "R2"
-bucket_name = "class9-summoner-avatars"
+database_id = "557ba29b-d4e3-45e8-b9e1-956c1442f133"
 
 [observability]
 enabled = true

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   birthday TEXT NOT NULL,
   nayin TEXT NOT NULL,
   destiny TEXT NOT NULL CHECK (destiny IN ('木', '火', '土', '金', '水')),
-  avatar_key TEXT,
+  avatar_data TEXT,
   avatar_type TEXT,
   avatar_updated_at INTEGER,
   created_at INTEGER NOT NULL
