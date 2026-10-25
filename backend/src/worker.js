@@ -39,6 +39,7 @@ const NAYIN = [
 
 const GENERATING = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
 const CONTROLLING = { 木: "土", 土: "水", 水: "火", 火: "金", 金: "木" };
+const PBKDF2_ITERATIONS = 100000;
 const MAX_AVATAR_BYTES = 512 * 1024;
 const encoder = new TextEncoder();
 let rosterSeeded = false;
@@ -90,7 +91,7 @@ async function hashPassword(password, salt) {
     {
       name: "PBKDF2",
       hash: "SHA-256",
-      iterations: 210000,
+      iterations: PBKDF2_ITERATIONS,
       salt: encoder.encode(salt)
     },
     key,
@@ -785,6 +786,9 @@ export default {
       throw new ApiError(404, "NOT_FOUND", "接口不存在");
     } catch (error) {
       const status = error instanceof ApiError ? error.status : 500;
+      if (status >= 500) {
+        console.error("class9_api_error", error);
+      }
       const payload = {
         error: {
           code: error instanceof ApiError ? error.code : "INTERNAL_ERROR",
