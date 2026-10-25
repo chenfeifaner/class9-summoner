@@ -40,6 +40,12 @@ npx wrangler d1 execute class9-summoner --file=./schema.sql --remote
 
 Worker 首次运行时会自动补充 56 人名单和班级轮次状态。
 
+已有数据库从旧结构升级时，再执行一次：
+
+```bash
+npx wrangler d1 execute class9-summoner --file=./migration-simplify.sql --remote
+```
+
 ## 3. 部署 Worker
 
 ```bash

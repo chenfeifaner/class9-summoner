@@ -43,6 +43,7 @@ const PBKDF2_ITERATIONS = 100000;
 const MAX_AVATAR_BYTES = 512 * 1024;
 const encoder = new TextEncoder();
 let rosterSeeded = false;
+const memoryRateBuckets = new Map();
 
 class ApiError extends Error {
   constructor(status, code, message) {
@@ -320,19 +321,17 @@ function parseAvatarDataUrl(value) {
 
 async function enforceRateLimit(request, env, scope, limit, windowMs) {
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-  const key = await sha256Hex(`${env.RATE_LIMIT_SALT || "class9"}|${scope}|${ip}`);
+  const key = `${scope}:${ip}`;
   const now = Date.now();
-  const row = await env.DB.prepare("SELECT window_start, count FROM rate_limits WHERE key = ?").bind(key).first();
-  if (!row || now - Number(row.window_start) > windowMs) {
-    await env.DB.prepare(
-      "INSERT INTO rate_limits (key, window_start, count) VALUES (?, ?, 1) ON CONFLICT(key) DO UPDATE SET window_start = excluded.window_start, count = 1"
-    ).bind(key, now).run();
+  const bucket = memoryRateBuckets.get(key);
+  if (!bucket || now - bucket.startedAt > windowMs) {
+    memoryRateBuckets.set(key, { startedAt: now, count: 1 });
     return;
   }
-  if (Number(row.count) >= limit) {
+  if (bucket.count >= limit) {
     throw new ApiError(429, "RATE_LIMITED", "请求过于频繁，请稍后再试");
   }
-  await env.DB.prepare("UPDATE rate_limits SET count = count + 1 WHERE key = ?").bind(key).run();
+  bucket.count += 1;
 }
 
 async function ensureBaseData(env) {
@@ -423,61 +422,57 @@ async function loadState(env, request, currentAccount) {
   const origin = new URL(request.url).origin;
   const stateRow = await env.DB.prepare("SELECT round_version FROM class_state WHERE id = 1").first();
   const roundVersion = Number(stateRow.round_version);
-  const [studentsResult, accountsResult, drawsResult, awardsResult, leaderboardResult] = await env.DB.batch([
+  const [studentsResult, accountsResult, drawsResult] = await env.DB.batch([
     env.DB.prepare("SELECT name, sort_order FROM students ORDER BY sort_order"),
     env.DB.prepare(
       "SELECT id, student_name, CASE WHEN avatar_data IS NOT NULL THEN 1 ELSE 0 END AS has_avatar, avatar_updated_at, created_at FROM accounts ORDER BY created_at"
     ),
     env.DB.prepare(
-      "SELECT target_name, rarity, stars, points, at, drawn_by_account_id, drawn_by_name FROM draws WHERE round_version = ? ORDER BY at DESC"
-    ).bind(roundVersion),
-    env.DB.prepare(
-      "SELECT id, round_version, target_name, rarity, points, at, drawn_by_account_id, drawn_by_name FROM awards ORDER BY at DESC LIMIT 5000"
-    ),
-    env.DB.prepare(`
-      SELECT
-        st.name,
-        COALESCE(SUM(a.points), 0) AS score,
-        COALESCE(SUM(CASE WHEN a.rarity = 'gold' THEN 1 ELSE 0 END), 0) AS gold,
-        COALESCE(SUM(CASE WHEN a.rarity = 'purple' THEN 1 ELSE 0 END), 0) AS purple,
-        COUNT(a.id) AS draws
-      FROM students st
-      LEFT JOIN awards a ON a.target_name = st.name
-      GROUP BY st.name
-      ORDER BY score DESC, gold DESC, draws DESC, st.sort_order ASC
-    `)
+      "SELECT id, round_version, target_name, rarity, stars, points, at, drawn_by_account_id, drawn_by_name FROM draws ORDER BY at DESC LIMIT 5000"
+    )
   ]);
+  const studentNames = studentsResult.results.map((row) => row.name);
+  const allDraws = drawsResult.results.map((row) => ({
+    id: `draw-${row.id}`,
+    roundVersion: Number(row.round_version),
+    targetName: row.target_name,
+    name: row.target_name,
+    rarity: row.rarity,
+    stars: Number(row.stars),
+    points: Number(row.points),
+    at: Number(row.at),
+    drawnByAccountId: row.drawn_by_account_id,
+    drawnByName: row.drawn_by_name
+  }));
+  const currentDraws = allDraws
+    .filter((entry) => entry.roundVersion === roundVersion)
+    .map((entry) => ({
+      name: entry.name,
+      rarity: entry.rarity,
+      stars: entry.stars,
+      points: entry.points,
+      at: entry.at,
+      drawnByAccountId: entry.drawnByAccountId,
+      drawnByName: entry.drawnByName
+    }));
+  const leaderboard = studentNames.map((name) => {
+    const rows = allDraws.filter((entry) => entry.targetName === name);
+    return {
+      name,
+      score: rows.reduce((total, entry) => total + entry.points, 0),
+      gold: rows.filter((entry) => entry.rarity === "gold").length,
+      purple: rows.filter((entry) => entry.rarity === "purple").length,
+      draws: rows.length
+    };
+  }).sort((a, b) => b.score - a.score || b.gold - a.gold || b.draws - a.draws);
 
   return {
     roundVersion,
-    students: studentsResult.results.map((row) => row.name),
+    students: studentNames,
     accounts: accountsResult.results.map((row) => publicAccount(row, origin)),
-    draws: drawsResult.results.map((row) => ({
-      name: row.target_name,
-      rarity: row.rarity,
-      stars: Number(row.stars),
-      points: Number(row.points),
-      at: Number(row.at),
-      drawnByAccountId: row.drawn_by_account_id,
-      drawnByName: row.drawn_by_name
-    })),
-    awards: awardsResult.results.map((row) => ({
-      id: row.id,
-      roundVersion: Number(row.round_version),
-      targetName: row.target_name,
-      rarity: row.rarity,
-      points: Number(row.points),
-      at: Number(row.at),
-      drawnByAccountId: row.drawn_by_account_id,
-      drawnByName: row.drawn_by_name
-    })),
-    leaderboard: leaderboardResult.results.map((row) => ({
-      name: row.name,
-      score: Number(row.score),
-      gold: Number(row.gold),
-      purple: Number(row.purple),
-      draws: Number(row.draws)
-    })),
+    draws: currentDraws,
+    awards: allDraws,
+    leaderboard,
     currentUser: currentAccount ? privateAccount(currentAccount, origin) : null
   };
 }
@@ -666,20 +661,8 @@ async function handleDraw(request, env, cors, account) {
       roundVersion, targetName, rarity, rarityInfo.stars, rarityInfo.points, at,
       drawnByAccountId, drawnByName, roundVersion, roundVersion, targetName
     );
-    const insertAward = env.DB.prepare(`
-      INSERT INTO awards (
-        id, round_version, target_name, rarity, points, at, drawn_by_account_id, drawn_by_name
-      )
-      SELECT ?, ?, ?, ?, ?, ?, ?, ?
-      WHERE EXISTS (
-        SELECT 1 FROM draws WHERE round_version = ? AND target_name = ? AND at = ?
-      )
-    `).bind(
-      awardId, roundVersion, targetName, rarity, rarityInfo.points, at,
-      drawnByAccountId, drawnByName, roundVersion, targetName, at
-    );
-    const results = await env.DB.batch([insertDraw, insertAward]);
-    if (Number(results[0].meta.changes) === 1) {
+    const result = await insertDraw.run();
+    if (Number(result.meta.changes) === 1) {
       const countRow = await env.DB.prepare(
         "SELECT COUNT(*) AS count FROM draws WHERE round_version = ?"
       ).bind(roundVersion).first();

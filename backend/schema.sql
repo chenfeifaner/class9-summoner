@@ -51,25 +51,5 @@ CREATE TABLE IF NOT EXISTS draws (
 CREATE INDEX IF NOT EXISTS draws_round_idx ON draws(round_version, at);
 CREATE INDEX IF NOT EXISTS draws_target_idx ON draws(target_name);
 
-CREATE TABLE IF NOT EXISTS awards (
-  id TEXT PRIMARY KEY,
-  round_version INTEGER NOT NULL,
-  target_name TEXT NOT NULL REFERENCES students(name),
-  rarity TEXT NOT NULL CHECK (rarity IN ('blue', 'purple', 'gold')),
-  points INTEGER NOT NULL CHECK (points IN (2, 5, 10)),
-  at INTEGER NOT NULL,
-  drawn_by_account_id TEXT,
-  drawn_by_name TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS awards_target_idx ON awards(target_name);
-CREATE INDEX IF NOT EXISTS awards_round_idx ON awards(round_version, at);
-
-CREATE TABLE IF NOT EXISTS rate_limits (
-  key TEXT PRIMARY KEY,
-  window_start INTEGER NOT NULL,
-  count INTEGER NOT NULL
-);
-
 INSERT OR IGNORE INTO class_state (id, round_version, updated_at)
 VALUES (1, 1, CAST(strftime('%s', 'now') AS INTEGER) * 1000);
