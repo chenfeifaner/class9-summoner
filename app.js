@@ -781,7 +781,7 @@ function updateAuthContext(now = new Date()) {
 function enterApp(account, options = {}) {
   currentAccount = account;
   isGuestMode = false;
-  elements.body.classList.remove("auth-locked");
+  elements.body.classList.remove("auth-locked", "booting");
   elements.app.setAttribute("aria-hidden", "false");
   elements.authScreen.setAttribute("aria-hidden", "true");
   elements.loginForm.reset();
@@ -809,6 +809,20 @@ function setSession(account) {
   }
 }
 
+function showGuestMode(options = {}) {
+  currentAccount = null;
+  isGuestMode = true;
+  elements.body.classList.remove("auth-locked", "booting");
+  elements.app.setAttribute("aria-hidden", "false");
+  elements.authScreen.setAttribute("aria-hidden", "true");
+  renderAll();
+  updateAuthContext();
+  window.setTimeout(() => elements.drawButton.focus({ preventScroll: true }), 80);
+  if (options.announce !== false) {
+    showToast("已进入免登录班级抽号，抽中姓名仍会累计天命");
+  }
+}
+
 async function enterGuestMode() {
   if (isDrawing) {
     return;
@@ -823,15 +837,7 @@ async function enterGuestMode() {
     setAuthToken("");
     currentAccount = null;
   }
-  currentAccount = null;
-  isGuestMode = true;
-  elements.body.classList.remove("auth-locked");
-  elements.app.setAttribute("aria-hidden", "false");
-  elements.authScreen.setAttribute("aria-hidden", "true");
-  renderAll();
-  updateAuthContext();
-  window.setTimeout(() => elements.drawButton.focus({ preventScroll: true }), 80);
-  showToast("已进入免登录班级抽号，抽中姓名仍会累计天命");
+  showGuestMode({ announce: true });
 }
 
 function showAuthScreen(message = "") {
@@ -841,6 +847,7 @@ function showAuthScreen(message = "") {
   }
   currentAccount = null;
   isGuestMode = false;
+  elements.body.classList.remove("booting");
   elements.body.classList.add("auth-locked");
   elements.app.setAttribute("aria-hidden", "true");
   elements.authScreen.setAttribute("aria-hidden", "false");
@@ -1653,10 +1660,10 @@ async function startLocalDraw() {
   const reelTimer = window.setInterval(() => {
     const randomName = examineNames[Math.floor(randomUnit() * examineNames.length)];
     elements.displayName.textContent = randomName;
-  }, motionQuery.matches ? 120 : 68);
-  const seekTime = motionQuery.matches ? 120 : 900;
-  const alignTime = motionQuery.matches ? 50 : 320;
-  const strikeTime = motionQuery.matches ? 80 : 800;
+  }, 68);
+  const seekTime = 900;
+  const alignTime = 320;
+  const strikeTime = 800;
   await wait(seekTime);
   window.clearInterval(reelTimer);
   if (!isDrawing) {
@@ -1774,10 +1781,10 @@ async function startCloudDraw() {
   const reelTimer = window.setInterval(() => {
     const randomName = reelNames[Math.floor(randomUnit() * reelNames.length)];
     elements.displayName.textContent = randomName;
-  }, motionQuery.matches ? 120 : 68);
-  const seekTime = motionQuery.matches ? 120 : 900;
-  const alignTime = motionQuery.matches ? 50 : 320;
-  const strikeTime = motionQuery.matches ? 80 : 800;
+  }, 68);
+  const seekTime = 900;
+  const alignTime = 320;
+  const strikeTime = 800;
 
   await wait(seekTime);
   window.clearInterval(reelTimer);
@@ -2533,12 +2540,7 @@ async function initialize() {
       if (authToken) {
         setAuthToken("");
       }
-      currentAccount = null;
-      elements.body.classList.add("auth-locked");
-      elements.app.setAttribute("aria-hidden", "true");
-      elements.authScreen.setAttribute("aria-hidden", "false");
-      setAuthMode(accounts.length > 0 ? "login" : "register");
-      renderProbability(calculateProbability(null, new Date()));
+      showGuestMode({ announce: false });
     }
     setRosterView("map");
     setupStarfield();
@@ -2557,13 +2559,7 @@ async function initialize() {
     if (sessionId) {
       safeRemove(SESSION_KEY);
     }
-    currentAccount = null;
-    elements.body.classList.add("auth-locked");
-    elements.app.setAttribute("aria-hidden", "true");
-    elements.authScreen.setAttribute("aria-hidden", "false");
-    const registeredCount = accounts.filter((account) => roster.includes(account.name)).length;
-    setAuthMode(registeredCount > 0 ? "login" : "register");
-    renderProbability(calculateProbability(null, new Date()));
+    showGuestMode({ announce: false });
   }
 
   setRosterView("map");
