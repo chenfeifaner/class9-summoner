@@ -1,0 +1,12 @@
+name = "class9-summoner-api-pages"
+compatibility_date = "2026-10-25"
+pages_build_output_dir = "public"
+
+[vars]
+ALLOWED_ORIGINS = "https://chenfeifaner.github.io,http://localhost:8080,http://127.0.0.1:8080"
+SESSION_TTL_HOURS = "168"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "class9-summoner"
+database_id = "557ba29b-d4e3-45e8-b9e1-956c1442f133"

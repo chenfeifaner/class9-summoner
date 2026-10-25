@@ -6,6 +6,7 @@
 
 - 前端：GitHub Pages
 - API：Cloudflare Workers
+- API 公网入口：Cloudflare Pages Functions
 - 数据库：Cloudflare D1
 - 账户认证：PBKDF2-SHA256 加盐密码摘要与服务端会话
 - 抽号与天命计分：服务端执行
@@ -21,3 +22,5 @@
 - 全班星图与抽取记录
 
 云端部署和维护说明见 [README-CLOUD.md](README-CLOUD.md)。
+
+正式 API 地址：`https://class9-summoner-api-pages.pages.dev`

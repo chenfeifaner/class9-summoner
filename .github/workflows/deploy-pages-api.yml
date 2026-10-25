@@ -1,0 +1,29 @@
+name: Deploy Cloudflare Pages API
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "backend/src/worker.js"
+      - "backend-pages/**"
+      - ".github/workflows/deploy-pages-api.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: ${{ vars.ENABLE_CLOUDFLARE_CI == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync Worker source
+        run: cp backend/src/worker.js backend-pages/public/_worker.js
+
+      - name: Deploy Pages API
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: backend-pages
+          command: pages deploy public --project-name class9-summoner-api-pages --branch main --commit-dirty=true

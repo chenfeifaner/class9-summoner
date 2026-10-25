@@ -47,16 +47,22 @@ cd backend
 npx wrangler deploy
 ```
 
-部署完成后记下 Worker 地址，例如：
+当前正式 API 使用 Cloudflare Pages Functions：
 
 ```text
-https://class9-summoner-api.你的子域.workers.dev
+https://class9-summoner-api-pages.pages.dev
+```
+
+Worker 地址作为备用入口：
+
+```text
+https://class9-summoner-api.chenfeifaner.workers.dev
 ```
 
 打开以下地址确认服务可用：
 
 ```text
-https://class9-summoner-api.你的子域.workers.dev/api/health
+https://class9-summoner-api-pages.pages.dev/api/health
 ```
 
 ## 4. 配置 GitHub
@@ -79,7 +85,8 @@ Cloudflare API Token 至少需要 Worker Scripts 和 D1 的部署权限。不要
 工作流：
 
 - `deploy-pages.yml` 构建并发布静态前端。
-- `deploy-worker.yml` 应用 D1 表结构并部署 Worker。
+- `deploy-worker.yml` 应用 D1 表结构并部署备用 Worker。
+- `deploy-pages-api.yml` 部署正式 Pages Functions API。
 
 ## 5. 本地联调
 

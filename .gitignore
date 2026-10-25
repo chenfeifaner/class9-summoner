@@ -2,4 +2,5 @@ _site/
 backend/node_modules/
 backend/.wrangler/
 backend/.dev.vars
+backend-pages/public/_worker.js
 .DS_Store

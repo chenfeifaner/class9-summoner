@@ -12,11 +12,11 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsS --retry 5 --retry-delay 2 \
-            https://class9-summoner-api.chenfeifaner.workers.dev/api/health
+            https://class9-summoner-api-pages.pages.dev/api/health
           curl -fsS --retry 5 --retry-delay 2 \
             -H "Origin: https://chenfeifaner.github.io" \
             -D headers.txt \
             -o state.json \
-            https://class9-summoner-api.chenfeifaner.workers.dev/api/state
+            https://class9-summoner-api-pages.pages.dev/api/state
           grep -qi "access-control-allow-origin: https://chenfeifaner.github.io" headers.txt
           node -e "const s=require('./state.json'); if(s.students.length!==56) throw new Error('Expected 56 students'); if(!Array.isArray(s.leaderboard)) throw new Error('Missing leaderboard'); console.log('API_OK students='+s.students.length+' accounts='+s.accounts.length);"
