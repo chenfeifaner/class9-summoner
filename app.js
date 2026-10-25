@@ -1927,11 +1927,6 @@ async function resetRound() {
     return;
   }
   if (CLOUD_MODE) {
-    if (!currentAccount) {
-      closeDialog(elements.resetDialog);
-      showAuthScreen("重置全班星轨需要先登录");
-      return;
-    }
     try {
       await apiRequest("/api/reset", { method: "POST" });
       await refreshCloudState();
@@ -1966,10 +1961,6 @@ function openRoster() {
 function openResetDialog() {
   if (isDrawing) {
     showToast("星轨正在回应，请稍候");
-    return;
-  }
-  if (CLOUD_MODE && !currentAccount) {
-    showAuthScreen("重置全班星轨需要先登录");
     return;
   }
   if (getHistory().length === 0) {

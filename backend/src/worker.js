@@ -615,9 +615,6 @@ async function handleUpdateMe(request, env, cors, account) {
 }
 
 async function handleReset(request, env, cors, account) {
-  if (!account) {
-    throw new ApiError(401, "LOGIN_REQUIRED", "重置本轮需要先登录");
-  }
   await enforceRateLimit(request, env, "reset", 10, 60 * 60 * 1000);
   const now = Date.now();
   const result = await env.DB.prepare(
